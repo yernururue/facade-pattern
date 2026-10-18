@@ -31,11 +31,9 @@ public class OrderFacade {
             paid = true;
             shippingNumber = shipping.createShipment(order);
         } catch (IllegalArgumentException | IllegalStateException e) {
-            // Возвращаем деньги только после успешного списания.
             if (paid) {
                 payment.refund(customer, order.getTotal());
             }
-            // Резерв точно создан: reserve выполнился до блока try.
             inventory.release(bookId, quantity);
             order.cancel();
             throw e;
