@@ -22,7 +22,7 @@ java -cp out Main
 Проверки без сторонних библиотек:
 
 ```sh
-javac --release 17 -encoding UTF-8 -d out src/*.java tests/OrderFacadeTest.java
+javac --release 17 -encoding UTF-8 -d out src/*.java
 java -ea -cp out OrderFacadeTest
 ```
 
@@ -46,7 +46,7 @@ java -ea -cp out OrderFacadeTest
 | `OrderFacade` | Координация сервисов и откат при отказе оплаты или доставки. |
 | `Main` | Четыре заранее подготовленных примера. |
 
-`tests/OrderFacadeTest.java` — отдельный класс для проверок, не часть магазина.
+`src/OrderFacadeTest.java` — отдельный класс для проверок, не часть магазина.
 
 ## Как работает фасад
 
