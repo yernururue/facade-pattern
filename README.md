@@ -1,12 +1,14 @@
 # Assignment 4 — Facade Pattern
 
-Вариант B: консольный магазин книг на Java 17. Покупатель заказывает одну
-книгу в указанном количестве. Каталог, остатки и баланс хранятся в памяти;
-при новом запуске данные сбрасываются. Цены и баланс — целые тенге (KZT).
+**Author:** Yernur Darmenov, SE-2523.
 
-## Запуск
+Option B: a console book shop written in Java 17. A customer orders one book
+in a chosen quantity. The catalog, stock and balance are stored in memory and
+reset when the program restarts. Prices and balances are whole tenge (KZT).
 
-Нужен JDK 17. Из корня проекта в терминале:
+## Run
+
+Use JDK 17. Run these commands from the project root:
 
 ```sh
 java -version
@@ -16,76 +18,124 @@ javac --release 17 -encoding UTF-8 -d out src/*.java
 java -cp out Main
 ```
 
-Первые две команды должны показывать версию 17. В IntelliJ IDEA открой
-проект, выбери **Project SDK: 17** и запусти `Main.main()`.
+The first two commands should show version 17. In IntelliJ IDEA, open the
+project, select **Project SDK: 17**, and run `Main.main()`.
 
-Проверки без сторонних библиотек:
+Run the checks without external libraries:
 
 ```sh
 javac --release 17 -encoding UTF-8 -d out src/*.java
 java -ea -cp out OrderFacadeTest
 ```
 
-Флаг `-ea` включает проверки `assert`. Успешный результат:
-`All facade checks passed`. Проверяются четыре сценария, повторный заказ
-после отката, покупка всего остатка и некорректные входные данные.
+The `-ea` flag enables `assert` checks. The final message should be
+`All facade checks passed`. The checks cover the four scenarios, ordering
+again after rollback, buying the exact remaining stock and invalid inputs.
 
-## Классы
+## Classes
 
-Все девять классов программы находятся в `src/`.
+The nine application classes are in `src/`.
 
-| Класс | Назначение |
+| Class | Responsibility |
 | --- | --- |
-| `Book` | Идентификатор, название и цена книги. |
-| `Customer` | Имя, адрес и баланс покупателя. |
-| `Order` | Номер, книга, покупатель, количество, сумма, статус и номер отправки. |
-| `InventoryService` | Каталог, проверка остатков, резервирование и освобождение книг. |
-| `PaymentProcessor` | Проверка баланса, списание и возврат денег. |
-| `ShippingService` | Проверка непустого адреса и выдача последовательного номера `SHIP-1`, `SHIP-2` и т. д. |
-| `NotificationService` | Проверка статуса, формирование и вывод подтверждения по данным заказа. |
-| `OrderFacade` | Координация сервисов и откат при отказе оплаты или доставки. |
-| `Main` | Четыре заранее подготовленных примера. |
+| `Book` | Stores the book ID, title and price. |
+| `Customer` | Stores the customer's name, address and balance. |
+| `Order` | Stores the order ID, book, customer, quantity, total, status and shipping number. |
+| `InventoryService` | Holds the catalog and stock; checks, reserves and releases books. |
+| `PaymentProcessor` | Checks the balance, charges the customer and refunds money. |
+| `ShippingService` | Checks for a nonempty address and generates numbers such as `SHIP-1`. |
+| `NotificationService` | Checks the order status, builds and prints a confirmation. |
+| `OrderFacade` | Coordinates the services and rolls back payment or shipping failures. |
+| `Main` | Runs four prepared examples. |
 
-`src/OrderFacadeTest.java` — отдельный класс для проверок, не часть магазина.
+`src/OrderFacadeTest.java` is a separate class for checks, not part of the shop.
 
-## Как работает фасад
+## How the facade works
 
-Клиент вызывает `shop.placeOrder(bookId, quantity, customer)` и получает
-подтверждённый `Order` либо стандартное исключение с сообщением об ошибке.
-Фасад проверяет наличие покупателя, затем поручает сервисам проверить остаток,
-зарезервировать книги, списать деньги и создать отправку. После этого
-подтверждает заказ и передаёт его сервису уведомлений.
+The client calls `shop.placeOrder(bookId, quantity, customer)` and receives a
+confirmed `Order` or a standard exception with a clear message. The facade
+checks that a customer was supplied, then asks the services to check stock,
+reserve books, take payment and create a shipment. It confirms the order and
+asks the notification service to print the confirmation.
 
-При недостатке книг выполнение останавливается до резерва и оплаты.
-Резервирование уменьшает доступный остаток; при успешной покупке он остаётся
-уменьшенным. Если оплата отклонена, фасад освобождает резерв. Если адрес пустой
-или `null`, доставка отклоняется уже после оплаты: фасад возвращает деньги,
-освобождает резерв и отмечает заказ как `CANCELLED`, затем передаёт исключение
-клиенту. Флаг `paid` становится `true` только после успешного списания.
+If stock is insufficient, processing stops before reservation and payment.
+Reservation reduces available stock; a successful purchase keeps it reduced.
+If payment fails, the facade releases the books. If the address is blank or
+`null`, shipping fails after payment: the facade refunds the money, releases
+the books, marks the order `CANCELLED` and rethrows the exception. The `paid`
+flag becomes `true` only after a successful charge.
 
-`Main` создаёт только фасад и объекты данных. Каталог и остатки читает через
-`getBooks()` и `getStock()`, не получая сами сервисы. Сервисы не ссылаются
-на фасад: их публичные методы можно использовать отдельно.
+`Main` creates only the facade and data objects. It reads the catalog and
+stock through `getBooks()` and `getStock()`, without accessing the services.
+The services do not reference the facade and can also be used independently.
 
-Все сценарии `Main` используют один магазин и книгу ценой 3000 KZT:
+All `Main` scenarios use the same shop and a book priced at 3000 KZT:
 
-| Сценарий | Остаток до → после | Баланс до → после |
+| Scenario | Stock before → after | Balance before → after |
 | --- | --- | --- |
-| Успех, 2 книги | 5 → 3 | 10000 → 4000 |
-| Запрос 10 книг | 3 → 3 | 10000 → 10000 |
-| Недостаточно денег | 3 → 3 | 1000 → 1000 |
-| Пустой адрес | 3 → 3 | 10000 → 10000 |
+| Success, 2 books | 5 → 3 | 10000 → 4000 |
+| Request for 10 books | 3 → 3 | 10000 → 10000 |
+| Insufficient balance | 3 → 3 | 1000 → 1000 |
+| Empty address | 3 → 3 | 10000 → 10000 |
 
-## Пять принципов Clean Code
+## UML class diagram
 
-1. **Понятные имена.** В `Main` вызов описывает действие и его данные:
+```mermaid
+classDiagram
+    class Main
+    class OrderFacade {
+        +getBooks() List~Book~
+        +getStock(int bookId) int
+        +placeOrder(int bookId, int quantity, Customer customer) Order
+    }
+    class InventoryService {
+        +checkStock(int bookId, int quantity) void
+        +reserve(int bookId, int quantity) void
+        +release(int bookId, int quantity) void
+    }
+    class PaymentProcessor {
+        +pay(Customer customer, int amount) void
+        +refund(Customer customer, int amount) void
+    }
+    class ShippingService {
+        +createShipment(Order order) String
+    }
+    class NotificationService {
+        +sendConfirmation(Order order) void
+    }
+    class Book
+    class Customer
+    class Order
+    Main ..> OrderFacade : uses
+    OrderFacade *-- InventoryService : owns
+    OrderFacade *-- PaymentProcessor : owns
+    OrderFacade *-- ShippingService : owns
+    OrderFacade *-- NotificationService : owns
+    OrderFacade ..> Order : creates and returns
+    InventoryService --> Book : stores catalog
+    Order --> Book : references
+    Order --> Customer : references
+    PaymentProcessor ..> Customer : updates balance
+    ShippingService ..> Order : reads address
+    NotificationService ..> Order : reads confirmation data
+```
+
+`*--` means composition (the facade creates and holds each service), `-->`
+means association (a stored reference), and `..>` means dependency (uses).
+No application class uses `extends` or `implements`: this design does not
+need inheritance or interfaces. Selected members and the main relationships
+are shown; getters and client dependencies on data objects are omitted.
+
+## Five Clean Code principles
+
+1. **Meaningful names.** This call in `Main` describes the action and its data:
 
    ```java
    Order order = shop.placeOrder(book.getId(), quantity, customer);
    ```
 
-2. **Одна ответственность.** `PaymentProcessor.pay()` проверяет баланс
-   и списывает деньги; фасад только вызывает его, не повторяя эту логику:
+2. **Single responsibility.** `PaymentProcessor.pay()` checks the balance
+   and takes payment. The facade calls it without repeating its logic:
 
    ```java
    if (customer.getBalance() < amount) {
@@ -94,15 +144,15 @@ java -ea -cp out OrderFacadeTest
    customer.setBalance(customer.getBalance() - amount);
    ```
 
-3. **Сокрытие деталей подсистемы.** Поле в `OrderFacade` закрыто;
-   клиент работает с простым API, а не управляет сервисом оплаты:
+3. **Hidden subsystem details.** This field in `OrderFacade` is private.
+   The client uses a small API instead of controlling the payment service:
 
    ```java
    private final PaymentProcessor payment = new PaymentProcessor();
    ```
 
-4. **Небольшие методы и ранняя проверка ошибок.** Весь метод
-   `ShippingService.createShipment()` проверяет адрес и выдаёт номер:
+4. **Small methods and early validation.** The complete
+   `ShippingService.createShipment()` checks the address and issues a number:
 
    ```java
    public String createShipment(Order order) {
@@ -114,9 +164,9 @@ java -ea -cp out OrderFacadeTest
    }
    ```
 
-5. **Явная обработка ошибок.** В блоке `catch` фасада деньги возвращаются
-   только после успешной оплаты. Резерв точно существует, потому что
-   `reserve()` завершился до входа в `try`:
+5. **Explicit error handling.** In the facade's `catch` block, money is
+   refunded only after successful payment. The reservation exists because
+   `reserve()` completed before entering `try`:
 
    ```java
    if (paid) {
